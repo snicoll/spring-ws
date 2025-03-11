@@ -1,11 +1,11 @@
 /*
- * Copyright 2005-2024 the original author or authors.
+ * Copyright 2005-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,11 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.ws.client.core.observation;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+
+import javax.xml.namespace.QName;
+import javax.xml.transform.Source;
 
 import io.micrometer.common.util.internal.logging.WarnThenDebugLogger;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
+
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.ws.FaultAwareWebServiceMessage;
@@ -33,11 +41,6 @@ import org.springframework.ws.transport.WebServiceConnection;
 import org.springframework.ws.transport.context.TransportContext;
 import org.springframework.ws.transport.context.TransportContextHolder;
 
-import javax.xml.namespace.QName;
-import javax.xml.transform.Source;
-import java.net.URI;
-import java.net.URISyntaxException;
-
 /**
  * Interceptor that creates an Observation for each operation.
  *
@@ -47,106 +50,106 @@ import java.net.URISyntaxException;
  */
 public class WebServiceObservationInterceptor extends ClientInterceptorAdapter {
 
-    private static final WarnThenDebugLogger WARN_THEN_DEBUG_LOGGER = new WarnThenDebugLogger(WebServiceObservationInterceptor.class);
-    private static final String OBSERVATION_KEY = "observation";
-    private static final WebServiceTemplateConvention DEFAULT_CONVENTION = new DefaultWebServiceTemplateConvention();
+	private static final WarnThenDebugLogger WARN_THEN_DEBUG_LOGGER = new WarnThenDebugLogger(
+			WebServiceObservationInterceptor.class);
 
-    private final ObservationRegistry observationRegistry;
+	private static final String OBSERVATION_KEY = "observation";
 
-    private final WebServiceTemplateConvention customConvention;
-    private final ObservationHelper observationHelper;
+	private static final WebServiceTemplateConvention DEFAULT_CONVENTION = new DefaultWebServiceTemplateConvention();
 
-    public WebServiceObservationInterceptor(
-            @NonNull
-            ObservationRegistry observationRegistry,
-            @NonNull
-            ObservationHelper observationHelper,
-            @Nullable
-            WebServiceTemplateConvention customConvention) {
+	private final ObservationRegistry observationRegistry;
 
-        this.observationRegistry = observationRegistry;
-        this.observationHelper = observationHelper;
-        this.customConvention = customConvention;
-    }
+	private final WebServiceTemplateConvention customConvention;
 
+	private final ObservationHelper observationHelper;
 
-    @Override
-    public boolean handleRequest(MessageContext messageContext) throws WebServiceClientException {
+	public WebServiceObservationInterceptor(@NonNull ObservationRegistry observationRegistry,
+			@NonNull ObservationHelper observationHelper, @Nullable WebServiceTemplateConvention customConvention) {
 
-        TransportContext transportContext = TransportContextHolder.getTransportContext();
-        HeadersAwareSenderWebServiceConnection connection =
-                (HeadersAwareSenderWebServiceConnection) transportContext.getConnection();
+		this.observationRegistry = observationRegistry;
+		this.observationHelper = observationHelper;
+		this.customConvention = customConvention;
+	}
 
-        Observation observation = WebServiceTemplateObservationDocumentation.WEB_SERVICE_TEMPLATE.start(
-                customConvention,
-                DEFAULT_CONVENTION,
-                () -> new WebServiceTemplateObservationContext(connection),
-                observationRegistry);
+	@Override
+	public boolean handleRequest(MessageContext messageContext) throws WebServiceClientException {
 
-        messageContext.setProperty(OBSERVATION_KEY, observation);
+		TransportContext transportContext = TransportContextHolder.getTransportContext();
+		HeadersAwareSenderWebServiceConnection connection = (HeadersAwareSenderWebServiceConnection) transportContext
+			.getConnection();
 
-        return true;
-    }
+		Observation observation = WebServiceTemplateObservationDocumentation.WEB_SERVICE_TEMPLATE.start(
+				this.customConvention, DEFAULT_CONVENTION, () -> new WebServiceTemplateObservationContext(connection),
+				this.observationRegistry);
 
-    @Override
-    public void afterCompletion(MessageContext messageContext, Exception ex) {
+		messageContext.setProperty(OBSERVATION_KEY, observation);
 
-        Observation observation = (Observation) messageContext.getProperty(OBSERVATION_KEY);
-        if (observation == null) {
-            WARN_THEN_DEBUG_LOGGER.log("Missing expected Observation in messageContext; the request will not be observed.");
-            return;
-        }
+		return true;
+	}
 
-        WebServiceTemplateObservationContext context = (WebServiceTemplateObservationContext) observation.getContext();
+	@Override
+	public void afterCompletion(MessageContext messageContext, Exception ex) {
 
-        WebServiceMessage request = messageContext.getRequest();
-        WebServiceMessage response = messageContext.getResponse();
+		Observation observation = (Observation) messageContext.getProperty(OBSERVATION_KEY);
+		if (observation == null) {
+			WARN_THEN_DEBUG_LOGGER
+				.log("Missing expected Observation in messageContext; the request will not be observed.");
+			return;
+		}
 
-        if (request instanceof SoapMessage soapMessage) {
+		WebServiceTemplateObservationContext context = (WebServiceTemplateObservationContext) observation.getContext();
 
-            Source source = soapMessage.getSoapBody().getPayloadSource();
-            QName root = observationHelper.getRootElement(source);
-            if (root != null) {
-                context.setLocalPart(root.getLocalPart());
-                context.setNamespace(root.getNamespaceURI());
-            }
-            if (soapMessage.getSoapAction() != null && !soapMessage.getSoapAction().equals(TransportConstants.EMPTY_SOAP_ACTION)) {
-                context.setSoapAction(soapMessage.getSoapAction());
-            }
-        }
+		WebServiceMessage request = messageContext.getRequest();
+		WebServiceMessage response = messageContext.getResponse();
 
-        if (ex == null) {
-            context.setOutcome("success");
-        } else {
-            context.setError(ex);
-            context.setOutcome("fault");
-        }
+		if (request instanceof SoapMessage soapMessage) {
 
-        if (response instanceof FaultAwareWebServiceMessage faultAwareResponse) {
-            if (faultAwareResponse.hasFault()) {
-                context.setOutcome("fault");
-            }
-        }
+			Source source = soapMessage.getSoapBody().getPayloadSource();
+			QName root = this.observationHelper.getRootElement(source);
+			if (root != null) {
+				context.setLocalPart(root.getLocalPart());
+				context.setNamespace(root.getNamespaceURI());
+			}
+			if (soapMessage.getSoapAction() != null
+					&& !soapMessage.getSoapAction().equals(TransportConstants.EMPTY_SOAP_ACTION)) {
+				context.setSoapAction(soapMessage.getSoapAction());
+			}
+		}
 
-        URI uri = getUriFromConnection();
-        if (uri != null) {
-            context.setHost(uri.getHost());
-            context.setPath(uri.getPath());
-        }
+		if (ex == null) {
+			context.setOutcome("success");
+		}
+		else {
+			context.setError(ex);
+			context.setOutcome("fault");
+		}
 
-        context.setContextualName("POST");
+		if (response instanceof FaultAwareWebServiceMessage faultAwareResponse) {
+			if (faultAwareResponse.hasFault()) {
+				context.setOutcome("fault");
+			}
+		}
 
-        observation.stop();
-    }
+		URI uri = getUriFromConnection();
+		if (uri != null) {
+			context.setHost(uri.getHost());
+			context.setPath(uri.getPath());
+		}
 
-    URI getUriFromConnection() {
-        TransportContext transportContext = TransportContextHolder.getTransportContext();
-        WebServiceConnection connection = transportContext.getConnection();
-        try {
-            return connection.getUri();
-        } catch (URISyntaxException e) {
-            return null;
-        }
-    }
+		context.setContextualName("POST");
+
+		observation.stop();
+	}
+
+	URI getUriFromConnection() {
+		TransportContext transportContext = TransportContextHolder.getTransportContext();
+		WebServiceConnection connection = transportContext.getConnection();
+		try {
+			return connection.getUri();
+		}
+		catch (URISyntaxException ex) {
+			return null;
+		}
+	}
+
 }
-

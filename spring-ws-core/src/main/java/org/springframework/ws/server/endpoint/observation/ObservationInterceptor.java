@@ -1,11 +1,11 @@
 /*
- * Copyright 2005-2024 the original author or authors.
+ * Copyright 2005-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,12 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.ws.server.endpoint.observation;
+
+import javax.xml.namespace.QName;
+import javax.xml.transform.Source;
 
 import io.micrometer.common.util.internal.logging.WarnThenDebugLogger;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.ws.FaultAwareWebServiceMessage;
@@ -33,117 +38,118 @@ import org.springframework.ws.transport.context.TransportContext;
 import org.springframework.ws.transport.context.TransportContextHolder;
 import org.springframework.ws.transport.http.HttpServletConnection;
 
-import javax.xml.namespace.QName;
-import javax.xml.transform.Source;
-
 /**
  * Interceptor implementation that creates an observation for a WebService Endpoint.
+ *
  * @author Johan Kindgren
  */
 public class ObservationInterceptor extends EndpointInterceptorAdapter {
 
-    private static final WarnThenDebugLogger WARN_THEN_DEBUG_LOGGER = new WarnThenDebugLogger(ObservationInterceptor.class);
-    private static final String OBSERVATION_KEY = "observation";
-    private static final WebServiceEndpointConvention DEFAULT_CONVENTION = new DefaultWebServiceEndpointConvention();
+	private static final WarnThenDebugLogger WARN_THEN_DEBUG_LOGGER = new WarnThenDebugLogger(
+			ObservationInterceptor.class);
 
-    private final ObservationRegistry observationRegistry;
-    private final ObservationHelper observationHelper;
-    private final WebServiceEndpointConvention customConvention;
+	private static final String OBSERVATION_KEY = "observation";
 
-    public ObservationInterceptor(
-            @NonNull
-            ObservationRegistry observationRegistry,
-            @NonNull
-            ObservationHelper observationHelper,
-            @Nullable
-            WebServiceEndpointConvention customConvention) {
-        this.observationRegistry = observationRegistry;
-        this.observationHelper = observationHelper;
-        this.customConvention = customConvention;
-    }
+	private static final WebServiceEndpointConvention DEFAULT_CONVENTION = new DefaultWebServiceEndpointConvention();
 
-    @Override
-    public boolean handleRequest(MessageContext messageContext, Object endpoint) throws Exception {
+	private final ObservationRegistry observationRegistry;
 
-        TransportContext transportContext = TransportContextHolder.getTransportContext();
-        HeadersAwareReceiverWebServiceConnection connection =
-                (HeadersAwareReceiverWebServiceConnection) transportContext.getConnection();
+	private final ObservationHelper observationHelper;
 
-        Observation observation = EndpointObservationDocumentation.WEB_SERVICE_ENDPOINT.start(
-                customConvention,
-                DEFAULT_CONVENTION,
-                () -> new WebServiceEndpointContext(connection),
-                observationRegistry);
+	private final WebServiceEndpointConvention customConvention;
 
-        messageContext.setProperty(OBSERVATION_KEY, observation);
+	public ObservationInterceptor(@NonNull ObservationRegistry observationRegistry,
+			@NonNull ObservationHelper observationHelper, @Nullable WebServiceEndpointConvention customConvention) {
+		this.observationRegistry = observationRegistry;
+		this.observationHelper = observationHelper;
+		this.customConvention = customConvention;
+	}
 
-        return true;
-    }
+	@Override
+	public boolean handleRequest(MessageContext messageContext, Object endpoint) throws Exception {
 
-    @Override
-    public void afterCompletion(MessageContext messageContext, Object endpoint, @Nullable Exception ex) {
+		TransportContext transportContext = TransportContextHolder.getTransportContext();
+		HeadersAwareReceiverWebServiceConnection connection = (HeadersAwareReceiverWebServiceConnection) transportContext
+			.getConnection();
 
-        Observation observation = (Observation) messageContext.getProperty(OBSERVATION_KEY);
-        if (observation == null) {
-            WARN_THEN_DEBUG_LOGGER.log("Missing expected Observation in messageContext; the request will not be observed.");
-            return;
-        }
+		Observation observation = EndpointObservationDocumentation.WEB_SERVICE_ENDPOINT.start(this.customConvention,
+				DEFAULT_CONVENTION, () -> new WebServiceEndpointContext(connection), this.observationRegistry);
 
-        WebServiceEndpointContext context = (WebServiceEndpointContext) observation.getContext();
+		messageContext.setProperty(OBSERVATION_KEY, observation);
 
-        WebServiceMessage request = messageContext.getRequest();
-        WebServiceMessage response = messageContext.getResponse();
+		return true;
+	}
 
-        if (request instanceof SoapMessage soapMessage) {
+	@Override
+	public void afterCompletion(MessageContext messageContext, Object endpoint, @Nullable Exception ex) {
 
-            Source source = soapMessage.getSoapBody().getPayloadSource();
-            QName root = observationHelper.getRootElement(source);
-            if (root != null) {
-                context.setLocalPart(root.getLocalPart());
-                context.setNamespace(root.getNamespaceURI());
-            }
-            String action = soapMessage.getSoapAction();
-            if (!TransportConstants.EMPTY_SOAP_ACTION.equals(action)) {
-                context.setSoapAction(soapMessage.getSoapAction());
-            } else {
-                context.setSoapAction("none");
-            }
-        }
+		Observation observation = (Observation) messageContext.getProperty(OBSERVATION_KEY);
+		if (observation == null) {
+			WARN_THEN_DEBUG_LOGGER
+				.log("Missing expected Observation in messageContext; the request will not be observed.");
+			return;
+		}
 
-        if (ex == null) {
-            context.setOutcome("success");
-        } else {
-            context.setError(ex);
-            context.setOutcome("fault");
-        }
+		WebServiceEndpointContext context = (WebServiceEndpointContext) observation.getContext();
 
-        if (response instanceof FaultAwareWebServiceMessage faultAwareResponse) {
-            if (faultAwareResponse.hasFault()) {
-                context.setOutcome("fault");
-            }
-        }
+		WebServiceMessage request = messageContext.getRequest();
+		WebServiceMessage response = messageContext.getResponse();
 
-        TransportContext transportContext = TransportContextHolder.getTransportContext();
-        HeadersAwareReceiverWebServiceConnection connection =
-                (HeadersAwareReceiverWebServiceConnection) transportContext.getConnection();
+		if (request instanceof SoapMessage soapMessage) {
 
-        if (connection instanceof HttpServletConnection servletConnection) {
-            HttpServletRequest servletRequest = servletConnection.getHttpServletRequest();
-            String servletPath = servletRequest.getServletPath();
-            String pathInfo = servletRequest.getPathInfo();
+			Source source = soapMessage.getSoapBody().getPayloadSource();
+			QName root = this.observationHelper.getRootElement(source);
+			if (root != null) {
+				context.setLocalPart(root.getLocalPart());
+				context.setNamespace(root.getNamespaceURI());
+			}
+			String action = soapMessage.getSoapAction();
+			if (!TransportConstants.EMPTY_SOAP_ACTION.equals(action)) {
+				context.setSoapAction(soapMessage.getSoapAction());
+			}
+			else {
+				context.setSoapAction("none");
+			}
+		}
 
-            if (pathInfo != null) {
-                context.setContextualName("POST " + servletPath + "/{pathInfo}");
-                context.setPath(servletPath + "/{pathInfo}");
-                context.setPathInfo(pathInfo);
-            } else {
-                context.setPath(servletPath);
-                context.setContextualName("POST " + servletPath);
-            }
-        } else {
-            context.setContextualName("POST");
-        }
+		if (ex == null) {
+			context.setOutcome("success");
+		}
+		else {
+			context.setError(ex);
+			context.setOutcome("fault");
+		}
 
-        observation.stop();
-    }
+		if (response instanceof FaultAwareWebServiceMessage faultAwareResponse) {
+			if (faultAwareResponse.hasFault()) {
+				context.setOutcome("fault");
+			}
+		}
+
+		TransportContext transportContext = TransportContextHolder.getTransportContext();
+		HeadersAwareReceiverWebServiceConnection connection = (HeadersAwareReceiverWebServiceConnection) transportContext
+			.getConnection();
+
+		if (connection instanceof HttpServletConnection servletConnection) {
+			HttpServletRequest servletRequest = servletConnection.getHttpServletRequest();
+			String servletPath = servletRequest.getServletPath();
+			String pathInfo = servletRequest.getPathInfo();
+
+			if (pathInfo != null) {
+				context.setContextualName("POST " + servletPath + "/{pathInfo}");
+				context.setPath(servletPath + "/{pathInfo}");
+				context.setPathInfo(pathInfo);
+			}
+			else {
+				context.setPath(servletPath);
+				context.setContextualName("POST " + servletPath);
+			}
+		}
+		else {
+			context.setContextualName("POST");
+		}
+
+		observation.stop();
+	}
+
 }

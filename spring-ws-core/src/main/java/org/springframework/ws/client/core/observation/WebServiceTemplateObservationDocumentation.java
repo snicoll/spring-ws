@@ -1,11 +1,11 @@
 /*
- * Copyright 2005-2024 the original author or authors.
+ * Copyright 2005-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.ws.client.core.observation;
 
 import io.micrometer.common.KeyValue;
@@ -27,108 +28,112 @@ import io.micrometer.observation.docs.ObservationDocumentation;
  * @author Johan Kindgren
  */
 enum WebServiceTemplateObservationDocumentation implements ObservationDocumentation {
-    /**
-     * This enum constant defines observation documentation for the WebServiceTemplate.
-     * It provides the default observation convention and low cardinality key names
-     * relevant to WebService operations.
-     */
-    WEB_SERVICE_TEMPLATE {
 
-        @Override
-        public Class<? extends ObservationConvention<? extends Observation.Context>> getDefaultConvention() {
-            return DefaultWebServiceTemplateConvention.class;
-        }
+	/**
+	 * This enum constant defines observation documentation for the WebServiceTemplate. It
+	 * provides the default observation convention and low cardinality key names relevant
+	 * to WebService operations.
+	 */
+	WEB_SERVICE_TEMPLATE {
 
-        @Override
-        public KeyName[] getLowCardinalityKeyNames() {
-            return LowCardinalityKeyNames.values();
-        }
+		@Override
+		public Class<? extends ObservationConvention<? extends Observation.Context>> getDefaultConvention() {
+			return DefaultWebServiceTemplateConvention.class;
+		}
 
-        @Override
-        public KeyName[] getHighCardinalityKeyNames() {
-            return HighCardinalityKeyNames.values();
-        }
-    };
+		@Override
+		public KeyName[] getLowCardinalityKeyNames() {
+			return LowCardinalityKeyNames.values();
+		}
 
-    enum HighCardinalityKeyNames implements KeyName {
-        /**
-         * Path for the client request.
-         * Optional value.
-         */
-        PATH {
-            @Override
-            public String asString() {
-                return "path";
-            }
+		@Override
+		public KeyName[] getHighCardinalityKeyNames() {
+			return HighCardinalityKeyNames.values();
+		}
+	};
 
-            @Override
-            public boolean isRequired() {
-                return false;
-            }
-        }
-    }
+	enum HighCardinalityKeyNames implements KeyName {
 
-    /**
-     * Enum representing low cardinality key names for observing a WebServiceTemplate.
-     */
-    enum LowCardinalityKeyNames implements KeyName {
+		/**
+		 * Path for the client request. Optional value.
+		 */
+		PATH {
+			@Override
+			public String asString() {
+				return "path";
+			}
 
-        /**
-         * Name of the exception thrown during the exchange,
-         * or {@value KeyValue#NONE_VALUE} if no exception happened.
-         */
-        EXCEPTION {
-            @Override
-            public String asString() {
-                return "exception";
-            }
-        },
+			@Override
+			public boolean isRequired() {
+				return false;
+			}
+		}
 
-        /**
-         * Outcome of the WebService exchange.
-         */
-        OUTCOME {
-            @Override
-            public String asString() {
-                return "outcome";
-            }
-        },
-        /**
-         * Namespace of the WebService payload.
-         */
-        NAMESPACE {
-            @Override
-            public String asString() {
-                return "namespace";
-            }
-        },
+	}
 
-        /**
-         * Localpart of the WebService payload.
-         */
-        LOCALPART {
-            @Override
-            public String asString() {
-                return "localpart";
-            }
-        },
-        /**
-         * Host for the WebService call.
-         */
-        HOST {
-            @Override
-            public String asString() {
-                return "host";
-            }
-        },
-        /**
-         * Value from the SoapAction header.
-         */
-        SOAPACTION {
-            @Override
-            public String asString() {
-                return "soapaction";
-            }
-        }
-    }
+	/**
+	 * Enum representing low cardinality key names for observing a WebServiceTemplate.
+	 */
+	enum LowCardinalityKeyNames implements KeyName {
+
+		/**
+		 * Name of the exception thrown during the exchange, or
+		 * {@value KeyValue#NONE_VALUE} if no exception happened.
+		 */
+		EXCEPTION {
+			@Override
+			public String asString() {
+				return "exception";
+			}
+		},
+
+		/**
+		 * Outcome of the WebService exchange.
+		 */
+		OUTCOME {
+			@Override
+			public String asString() {
+				return "outcome";
+			}
+		},
+		/**
+		 * Namespace of the WebService payload.
+		 */
+		NAMESPACE {
+			@Override
+			public String asString() {
+				return "namespace";
+			}
+		},
+
+		/**
+		 * Localpart of the WebService payload.
+		 */
+		LOCALPART {
+			@Override
+			public String asString() {
+				return "localpart";
+			}
+		},
+		/**
+		 * Host for the WebService call.
+		 */
+		HOST {
+			@Override
+			public String asString() {
+				return "host";
+			}
+		},
+		/**
+		 * Value from the SoapAction header.
+		 */
+		SOAPACTION {
+			@Override
+			public String asString() {
+				return "soapaction";
+			}
+		}
+
+	}
+
 }

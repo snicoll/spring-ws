@@ -14,21 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.ws.server.endpoint.observation;
-
-import io.micrometer.observation.Observation;
-import io.micrometer.observation.ObservationConvention;
-
 /**
- * ObservationConvention that describes how a WebService Endpoint is observed.
- *
- * @author Johan Kindgren
+ * Server-side observation support.
  */
-public interface WebServiceEndpointConvention extends ObservationConvention<WebServiceEndpointContext> {
-
-	@Override
-	default boolean supportsContext(Observation.Context context) {
-		return context instanceof WebServiceEndpointContext;
-	}
-
-}
+package org.springframework.ws.server.endpoint.observation;
