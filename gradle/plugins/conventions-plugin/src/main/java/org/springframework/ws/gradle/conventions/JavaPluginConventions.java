@@ -23,6 +23,7 @@ import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ConfigurationContainer;
+import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -30,6 +31,8 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.testing.Test;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.openrewrite.gradle.RewriteExtension;
+import org.openrewrite.gradle.RewritePlugin;
 
 /**
  * Conventions for the {@link JavaPlugin}.
@@ -46,13 +49,12 @@ class JavaPluginConventions {
 		enableSourceAndJavadocJars(java);
 		configureSourceAndTargetCompatibility(java);
 		configureDependencyManagement(project);
+		configureOpenRewrite(project);
 		configureJarManifest(project);
 		configureToolchain(project, java);
 		configureJavadocClasspath(project, java);
 		configureJUnitPlatform(project);
 	}
-
-
 
 	private void enableSourceAndJavadocJars(JavaPluginExtension java) {
 		java.withSourcesJar();
@@ -76,6 +78,16 @@ class JavaPluginConventions {
 		DependencyHandler dependencies = project.getDependencies();
 		dependencyManagement.getDependencies()
 			.add(dependencies.enforcedPlatform(dependencies.project(Map.of("path", ":spring-ws-platform"))));
+	}
+
+	private void configureOpenRewrite(Project project) {
+		project.getRepositories()
+			.mavenLocal((repository) -> repository.content((content) -> content.includeGroup("net.nicoll")));
+		new RewritePlugin().apply(project);
+		RewriteExtension rewrite = project.getExtensions().getByType(RewriteExtension.class);
+		rewrite.activeRecipe("net.nicoll.openrewrite.MigrateTestToTestsSuffix");
+		DependencySet rewriteConfig = project.getConfigurations().getByName("rewrite").getDependencies();
+		rewriteConfig.add(project.getDependencies().create("net.nicoll:rename-test-to-tests-recipe:0.0.1-SNAPSHOT"));
 	}
 
 	private void configureJarManifest(Project project) {
