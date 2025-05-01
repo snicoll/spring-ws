@@ -1,5 +1,12 @@
 pluginManagement {
 	includeBuild "gradle/plugins"
+	repositories {
+		gradlePluginPortal()
+		maven {
+			name = "Spring Snapshots"
+			url = "https://repo.spring.io/snapshot"
+		}
+	}
 }
 
 plugins {

@@ -6,11 +6,19 @@ plugins {
 
 repositories {
 	mavenCentral()
+	gradlePluginPortal()
+	maven {
+		name = "Spring Snapshots"
+		url = "https://repo.spring.io/snapshot"
+	}
 }
 
 dependencies {
 	checkstyle("com.puppycrawl.tools:checkstyle:${checkstyle.toolVersion}")
 	checkstyle("io.spring.javaformat:spring-javaformat-checkstyle:${javaFormatVersion}")
+
+	implementation("io.spring.javaformat:spring-javaformat-gradle-plugin:$javaFormatVersion")
+	implementation("io.spring.gradle.nullability:nullability-plugin:0.0.1-SNAPSHOT")
 }
 
 gradlePlugin {
@@ -20,8 +28,4 @@ gradlePlugin {
 			implementationClass = "org.springframework.ws.gradle.conventions.ConventionsPlugin"
 		}
 	}
-}
-
-dependencies {
-	implementation("io.spring.javaformat:spring-javaformat-gradle-plugin:$javaFormatVersion")
 }
