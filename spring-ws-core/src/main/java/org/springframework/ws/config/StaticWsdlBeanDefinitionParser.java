@@ -23,6 +23,7 @@ import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.xml.AbstractSingleBeanDefinitionParser;
 import org.springframework.beans.factory.xml.ParserContext;
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
@@ -54,7 +55,10 @@ class StaticWsdlBeanDefinitionParser extends AbstractSingleBeanDefinitionParser 
 		}
 		String location = element.getAttribute("location");
 		if (StringUtils.hasLength(location)) {
-			String filename = StringUtils.stripFilenameExtension(StringUtils.getFilename(location));
+			String filename = StringUtils.getFilename(location);
+			// TODO: https://github.com/spring-projects/spring-framework/pull/34896
+			Assert.notNull(filename, "'location' must not be null");
+			filename = StringUtils.stripFilenameExtension(filename);
 			if (StringUtils.hasLength(filename)) {
 				return filename;
 			}
