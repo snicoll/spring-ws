@@ -20,6 +20,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.github.benmanes.gradle.versions.VersionsPlugin;
+import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask;
 import io.spring.javaformat.gradle.SpringJavaFormatPlugin;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
@@ -33,6 +35,9 @@ import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.testing.Test;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
+
+import org.springframework.ws.gradle.conventions.support.Version;
+import org.springframework.ws.gradle.conventions.support.VersionUpgradePolicy;
 
 /**
  * Conventions for the {@link JavaPlugin}.
@@ -50,6 +55,7 @@ class JavaPluginConventions {
 		enableSourceAndJavadocJars(java);
 		configureSourceAndTargetCompatibility(java);
 		configureDependencyManagement(project);
+		configureVersionUpgradePolicy(project);
 		configureJarManifest(project);
 		configureToolchain(project, java);
 		configureJavadocClasspath(project, java);
@@ -95,6 +101,27 @@ class JavaPluginConventions {
 		DependencyHandler dependencies = project.getDependencies();
 		dependencyManagement.getDependencies()
 			.add(dependencies.enforcedPlatform(dependencies.project(Map.of("path", ":spring-ws-platform"))));
+	}
+
+	private void configureVersionUpgradePolicy(Project project) {
+		project.getPlugins().apply(VersionsPlugin.class);
+		project.getTasks()
+			.withType(DependencyUpdatesTask.class, (updateTask) -> updateTask.rejectVersionIf((candidate) -> {
+				Version currentVersion = Version.from(candidate.getCurrentVersion());
+				Version candidateVersion = Version.from(candidate.getCandidate().getVersion());
+				boolean result = VersionUpgradePolicy.SAME_MINOR_VERSION.isCandidate(currentVersion, candidateVersion);
+				if (!result) {
+					System.out.printf("We shouldn't migrate %s from %s to %s (parts = %s vs. %s)%n",
+							candidate.getCandidate().getGroup() + ":" + candidate.getCandidate().getModule(),
+							currentVersion, candidateVersion, currentVersion.getParts(), candidateVersion.getParts());
+				}
+				else {
+					System.out.printf("Opt-in for migrating %s from %s to %s (parts = %s vs. %s)%n",
+							candidate.getCandidate().getGroup() + ":" + candidate.getCandidate().getModule(),
+							currentVersion, candidateVersion, currentVersion.getParts(), candidateVersion.getParts());
+				}
+				return result;
+			}));
 	}
 
 	private void configureJarManifest(Project project) {
