@@ -1,2 +1,10 @@
+pluginManagement {
+	repositories {
+		mavenCentral()
+		gradlePluginPortal()
+		maven { url 'https://repo.spring.io/snapshot' }
+	}
+}
+
 include "conventions-plugin"
 include "optional-dependencies-plugin"
